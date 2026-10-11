@@ -2,6 +2,21 @@
 
 All notable changes to the `lua-agent-builder` plugin. Versions follow the tag `release-prod.yml` cuts from `package.json` (`v<version>`). lua-cli is a TypeScript SDK/CLI; it is unrelated to the Lua programming language.
 
+## 1.10.0 — 2026-10-11
+
+**`/lua-deploy webapp` deploys just the web app (lua-cli 3.49.0+).** lua-cli 3.49.0 adds `lua deploy webapp`, a scoped promote like `lua deploy webhook`: a new agent version identical to the live one except that web app's pin is created and promoted, so nothing else staged on the agent goes live. Until now the plugin made a web app live by creating a whole agent version, diffing it against the live one and stopping when anything else would have changed.
+
+- **`/lua-deploy webapp`**: on lua-cli 3.49.0 or later the pilot pushes the app, then runs `LUA_DEPLOY_CONFIRMED=1 lua deploy webapp --ci --name <n> --set-version <v> --force`. Below 3.49.0 it keeps the agent-version path, with the diff and the stop. The pilot reads `lua --version` once before the deploy step to pick the path.
+- **Failures and the kill switch**: a failed scoped deploy changes nothing on the server, so the pilot reports a 503 `SCOPED_PROMOTE_FAILED` or 409 `SCOPED_PROMOTE_CAP_EXHAUSTED` as a failed deploy (for the 409: prune with `lua version delete`). A deploy never switches a disabled app on; the pilot quotes the CLI's `⚠️  Web app <name> is switched off: …` line in its report.
+- **Rollback line**: on 3.49.0+ a web app rolls back with `lua deploy webapp --set-version <previous>`. That rolls back only that app, where promoting an earlier agent version rolls back every primitive.
+- **Next steps** in `/lua-new`, `/lua-push`, `lua-skill-builder` and the decision tree now point at `/lua-deploy webapp`, not `/lua-deploy agent-version`.
+- **`lib/knowledge/web-apps.md`**:
+  - §7 has the 3.49.0+ deploy, rollback and switched-off rows, with the agent-version rows kept for older CLIs.
+  - §3: the `Data.get` example now passes the filter as the second argument (it showed `{ filter: … }`).
+  - §3 also notes that on lua-cli 3.49.0 and earlier a `.default()` field is typed `T | undefined` in the handler. The release after 3.49.0 types the schema output.
+
+Versioning: #18 (`fix/deploy-hook-false-positives`) is still open and declares 1.7.1. If this merges first, #18 takes 1.10.1 and its entry goes above this one.
+
 ## 1.9.1 — 2026-10-08
 
 **`/lua-qa full`: report correctness fixes from the first three-tier trial.** The suite ran smoke, medium and production-ready on a test agent (Pageturner Books: 7 tools, 4 workflows, one of them a `foreach`). Four defects changed what the report said.
