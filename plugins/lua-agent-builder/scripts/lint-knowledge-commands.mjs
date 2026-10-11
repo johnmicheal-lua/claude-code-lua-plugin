@@ -99,7 +99,7 @@ setSub('test',         ['skill', 'webhook', 'job', 'preprocessor', 'postprocesso
                         // lua-cli 3.42.0 (Lua Apps): one route of a web app.
                         'webapp']);
 setSub('push',         ['skill', 'agent', 'persona', 'webhook', 'trigger', 'job', 'preprocessor', 'postprocessor', 'mcp',
-                        'device', 'device-trigger', 'voice', 'workflow', 'webapp', 'backup', 'all']);
+                        'device', 'device-trigger', 'voice', 'workflow', 'webapp', 'decision', 'backup', 'all']);
 // lua-cli 3.42.0 (Lua Apps): scaffold and run a web app.
 setSub('apps',         ['new', 'dev']);
 setSub('deploy',       ['skill', 'webhook', 'trigger', 'job', 'preprocessor', 'postprocessor', 'webapp', 'persona', 'all']); // webapp: lua-cli 3.49.0
