@@ -37,6 +37,7 @@ Package the finished agent for other orgs? → a marketplace **agent template** 
 9. Proactive outbound (WhatsApp template, email, SMS, Teams)?     → Channels.* (or User.get(id).send for "their last chat channel" — it never reaches email)
 10. Phone call out?                                               → Voice.call
 11. People need a page — a board, review queue, dashboard, form, admin screen over the agent's data? → defineWebApp (web-apps.md)
+12. A judgment call the code branches on — is this X, which of these, how much — wanted as a number, not prose? → Decisions.ask inline; a LuaDecision + Decisions.run when several places ask it or it must be tunable without a redeploy (decisions.md; ⏳ lua-cli 3.48.0)
 ```
 
 If several apply, the agent usually needs all of them. Stage: tools → integrations → webhooks/triggers → jobs → workflows → processors → web apps. Test each stage before the next.

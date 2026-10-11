@@ -2,6 +2,29 @@
 
 All notable changes to the `lua-agent-builder` plugin. Versions follow the tag `release-prod.yml` cuts from `package.json` (`v<version>`). lua-cli is a TypeScript SDK/CLI; it is unrelated to the Lua programming language.
 
+## 1.10.0 — 2026-10-11
+
+**Decisions: `/lua-decisions`, `/lua-new decision`, and a knowledge file for the Decisions primitive** (lua-cli 3.48.0; `--model` and the OpenRouter ids from lua-cli 3.49.2).
+
+A decision is one call that takes some state and typed questions (`Decisions.odds`, `Decisions.choice`, `Decisions.score`) and returns typed answers with probabilities, from any agent code. A `LuaDecision` is the named, versioned form: `lua push` stages a version, the dashboard edits and publishes, `lua decisions publish` rolls back, and `Decisions.run('<name>', state)` keeps asking the current version. Thirteen models answer behind one shape: Jev (Lua's default), OpenAI, and eleven decision models served through OpenRouter by `vendor/model` id.
+
+### New
+
+- **`/lua-decisions [list | versions <name> | run <name> | publish <name> <version> | delete <name>]`** (`commands/lua-decisions.md`). `run` takes `--message '<text>'` or `--state '<json>'` and the per-call overrides `--provider`, `--model <id>` and `--min-confidence`, and reports every answer by its type (odds, choice with confidence and `uncertain`, score with its level, or refused) with the provider, the dated model id, the routing rule, duration, tokens, cache status and the cost in actions. `publish` and `delete` go through the Bash prompt once (`--force`, since the CLI's own y/N cannot be answered from a slash); the slash never adds an AskUserQuestion on top.
+- **`/lua-new decision <name>`** writes `src/decisions/<name>.ts` with literal questions (the one shape the compiler can read), registers it in `decisions: [...]`, compiles, reads the manifest entry back, and names the push and publish steps; the builder shows the typed caller the user will write and why `answer.type` is checked before `.odds` / `.choice` / `.score`.
+- **`lib/knowledge/decisions.md`**: the builders and their limits, the result shape, providers and routing (what `auto` picks, when a fallback runs and what it costs, why a pinned provider never switches), the OpenRouter rules (a `vendor/model` id pins openrouter; `provider: 'openrouter'` needs a model; `typesafe/…` and `openai/…` ids are refused with the provider to use; unknown or data-retaining ids fail `decision_rejected` with no fallback; images reach every model), the `LuaDecision` lifecycle (staged by push, current by promote or publish, 1.0.1 on the first push, dashboard drafts never pinned), the five verbs with aliases and exit codes, the error codes, sharing and caching, the `decisions` log source, and billing (0.005 actions on Jev, 0.01 on OpenAI or OpenRouter, free when cached, failed or cancelled).
+
+### Changed
+
+- **Permissions** (`lib/permissions-template.json`, mirrored in `test/lib/permissions-mirror.test.mjs`): `lua decisions list|versions|run` are allowed (`run` is one billed call that changes no configuration); `lua decisions publish|delete` sit in `ask`, the single confirmation `/lua-decisions` relies on. `lua push decision` rides the generic push allow — a pushed decision is staged only. Not in the tokenizer: making a decision version current is agent configuration, not a deploy.
+- **`/lua-logs`** documents `--type decisions` (one row per call: model, provider, rule, answers with probabilities, tokens, cost, cache status, error code).
+- **The debug subagent** (`agents/lua-debug.md`) reads a `DecisionError` by code: `decision_invalid` names the field, `decision_not_found` is a version that was never made current (fix with publish or promote, not code), `decision_rejected` is the model refusing the request and never falls back, the 503 family is the provider side and the SDK never retries. `lua decisions list|versions` join its allowlist.
+- **`/lua-new`** accepts `decision` (aliased from `decisions`) with one extra question, "what should it decide, and what are the possible answers?"; the builder (`agents/lua-skill-builder.md`) reads `decisions.md`, writes the file by convention, registers it in `decisions`, and compile-verifies it (there is no `lua test` type).
+- **`primitives.md` §16 and `decision-trees.md`** route "a judgment the code branches on" to `Decisions.ask` or a `LuaDecision`, next to `AI.generate` for prose.
+- **`cli-reference.md`** gains the `lua decisions` row in §4 and the two SDK pages in the docs map.
+
+Versioning: 1.9.1 is on `main` and tagged, so this is 1.10.0. Nothing else is open that declares a version.
+
 ## 1.9.1 — 2026-10-08
 
 **`/lua-qa full`: report correctness fixes from the first three-tier trial.** The suite ran smoke, medium and production-ready on a test agent (Pageturner Books: 7 tools, 4 workflows, one of them a `foreach`). Four defects changed what the report said.
