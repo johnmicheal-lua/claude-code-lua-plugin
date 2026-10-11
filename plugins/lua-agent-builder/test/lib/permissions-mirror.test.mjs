@@ -197,6 +197,13 @@ describe('permission layer (lib/permissions-template.json) under Claude Code sem
       'lua drains status drn_9f31a7c04b2e615d8a03cc71 --json',
       'lua drains deliveries drn_9f31a7c04b2e615d8a03cc71 --limit 20 --kind batch --json',
       'lua drains test drn_9f31a7c04b2e615d8a03cc71 --json',
+      'lua decisions list --json',
+      'lua decisions versions triage --json',
+      "lua decisions run triage --message 'I want my money back' --json",
+      "lua decisions run triage --state '{\"message\":\"hi\"}' --provider openai --min-confidence 0.8 --json",
+      "lua decisions run triage --message 'hi' --model liquid/d1 --json",
+      'lua logs --ci --json --type decisions --limit 20',
+      'lua push decision --name triage --ci --force',
       // Devices (1.7.0): the read verbs /lua-devices emits, and the device log sources.
       'lua devices list --ci',
       'lua devices list --ci --group printers',
@@ -251,6 +258,8 @@ describe('permission layer (lib/permissions-template.json) under Claude Code sem
       'lua drains verify drn_9f31a7c04b2e615d8a03cc71 --json',
       'lua drains pause drn_9f31a7c04b2e615d8a03cc71 --reason noisy --json',
       'lua drains resume drn_9f31a7c04b2e615d8a03cc71 --json',
+      'lua decisions publish triage 1.0.1 --force',
+      'lua decisions delete triage --force',
       'lua drains rotate-secret drn_9f31a7c04b2e615d8a03cc71 --json',
       'lua drains rotate-secret drn_9f31a7c04b2e615d8a03cc71 --finalize --json',
       // lua-cli 3.44.0: the bucket-ownership confirm and the batch replay change drain state too.

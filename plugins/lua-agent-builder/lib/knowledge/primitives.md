@@ -548,7 +548,7 @@ Channel constraints the architect should plan for: WhatsApp → template strateg
 | "Agent-wide data, lookup tables, vector search" | `Data` (+ `index` declarations — from a `lua test` run only, §12) |
 | "Known SaaS (Linear, HubSpot, Gmail, Stripe, GitHub …)" | `lua integrations connect` → auto-provisioned MCP (+ `Integrations.passthrough` for raw calls) |
 | "My own MCP server" | `LuaMCPServer` |
-| "Classify / summarise inside code" | `AI.generate` |
+| "Classify / summarise inside code" | `AI.generate` for prose; a typed judgment the code branches on (odds, a choice, a score, with probabilities) → `Decisions.ask`, or a versioned `LuaDecision` + `Decisions.run` when several places ask it or it must be tunable without a redeploy (decisions.md, `/lua-decisions`) |
 | "Hand off to another agent" | `Agents.invoke` |
 | "Proactive message / email / WhatsApp template" | `Channels.*` (`User.get(id).send` reaches the user's last chat channel — never email) |
 | "Phone call" | `LuaVoice` + `Voice.call` |
