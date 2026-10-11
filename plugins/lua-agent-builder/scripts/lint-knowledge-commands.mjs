@@ -102,7 +102,7 @@ setSub('push',         ['skill', 'agent', 'persona', 'webhook', 'trigger', 'job'
                         'device', 'device-trigger', 'voice', 'workflow', 'webapp', 'backup', 'all']);
 // lua-cli 3.42.0 (Lua Apps): scaffold and run a web app.
 setSub('apps',         ['new', 'dev']);
-setSub('deploy',       ['skill', 'webhook', 'trigger', 'job', 'preprocessor', 'postprocessor', 'persona', 'all']);
+setSub('deploy',       ['skill', 'webhook', 'trigger', 'job', 'preprocessor', 'postprocessor', 'webapp', 'persona', 'all']); // webapp: lua-cli 3.49.0
 setSub('env',          ['sandbox', 'staging', 'production']);
 setSub('persona',      ['sandbox', 'staging', 'production']);
 // `lua integrations webhooks <action>` / `lua workflows goals <verb>` (one
