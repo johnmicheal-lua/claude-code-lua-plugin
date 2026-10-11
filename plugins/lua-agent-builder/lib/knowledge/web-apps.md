@@ -1,4 +1,4 @@
-# Web apps — pages and typed routes on an agent (lua-cli 3.42.0+ · read at 3.45.0)
+# Web apps — pages and typed routes on an agent (lua-cli 3.42.0+ · read at 3.45.0; §7 deploy at 3.49.0)
 
 Read from lua-cli `src/types/web-app.ts`, `src/commands/apps.ts`, `src/commands/test.ts` (`testWebApp`), `src/commands/push.ts`, `src/primitives/web-app.handler.ts`, `src/utils/web-app-build.ts`, `src/utils/web-app-route.ts` and `template-web-app/` at **3.45.0** (npm `latest` is 3.46.0 on 2026-10-06 — not re-read); the wire contract and limits from `@lua/shared-types` `web-route-contract.ts`; the page policy from lua-core `src/apps-gateway/web-app-html.ts`; the snapshot rule from lua-agents `agent-version.service.ts`. Product docs: docs.heylua.ai `/concepts/apps`, `/build/apps/quickstart`, `/build/apps/routes-and-pages`, `/reference/cli/apps`. Below lua-cli **3.42.0** `webapp` is not a push/test type and `lua apps` does not exist — `/lua-update` first.
 
@@ -8,7 +8,7 @@ Read from lua-cli `src/types/web-app.ts`, `src/commands/apps.ts`, `src/commands/
 
 ## 1. The model in one paragraph
 
-A **web app** is a primitive of one agent with two halves. **Pages**: a Vite + React project in `src/apps/<name>/web`, built by `lua push webapp` and served from the app's **own origin** (`https://<slug>.apps.heylua.ai`) inside Lua Workspace or the admin console. **Routes**: typed handlers in `src/apps/<name>/app.ts`, run on Lua in the same sandbox as tools — `Data`, `env()`, `fetch` — **as the signed-in person** (`auth`). The page calls a route with `lua.api(method, path, body?)` from `@lua-ai-global/app-client`. A pushed version is **staged only**: it goes live with the **agent version** that pins it, and promoting an earlier agent version rolls the app back.
+A **web app** is a primitive of one agent with two halves. **Pages**: a Vite + React project in `src/apps/<name>/web`, built by `lua push webapp` and served from the app's **own origin** (`https://<slug>.apps.heylua.ai`) inside Lua Workspace or the admin console. **Routes**: typed handlers in `src/apps/<name>/app.ts`, run on Lua in the same sandbox as tools — `Data`, `env()`, `fetch` — **as the signed-in person** (`auth`). The page calls a route with `lua.api(method, path, body?)` from `@lua-ai-global/app-client`. A pushed version is **staged**. ⏳ From lua-cli **3.49.0**, `lua deploy webapp` makes it live **on its own** (a scoped promote: only that app's pin moves, nothing else staged goes live) and deploying an earlier version rolls just that app back. Below 3.49.0, it goes live only with the **agent version** that pins it (§7).
 
 | | Where | Runs | Built / checked by |
 |---|---|---|---|
@@ -45,7 +45,7 @@ export default defineWebApp({
   routes: {
     'GET /tickets': route({
       query: z.object({ status: z.enum(['open', 'closed']).default('open') }),
-      handler: async ({ query }) => ({ items: (await Data.get('tickets', { filter: { status: query.status } })).data }),
+      handler: async ({ query }) => ({ items: (await Data.get('tickets', { status: query.status })).data }),
     }),
     'POST /tickets/:id/close': route({
       params: z.object({ id: z.string() }),
@@ -62,7 +62,7 @@ export default defineWebApp({
 - **Keys** are `'<METHOD> /<path>'`, methods `GET POST PUT PATCH DELETE`, exactly one space, `:param` segments. A bad key, a route without `handler`, a nav item whose `path` doesn't start with `/` or lacks `label`, a bad name, a missing `pages.root`, or **no routes and no `fetch`** all fail at `lua compile` with a `defineWebApp(<name>): …` message.
 - **`ctx`**: `params`, `query` (repeated key → array), `body`, `headers` (lower-cased, **allow-listed**: `accept`, `accept-language`, `content-type`, `if-none-match`, `idempotency-key`, `x-lua-*` — cookies never arrive), `method`, `path`, `route`, `auth`, `app` (`{ id, name, version, deployment, origin, preview }`), `request` (a Web `Request`).
 - **`auth`**: `{ userId, orgId, agentId, subjectType: 'user', credentialType: 'firstPartySession', sessionId?, roles, scopes, name?, email?, expiresAt? }` — always a signed-in person, never an API key, never anonymous. Use `auth.userId` for "who did this" fields. **Locally `roles` and `scopes` are empty** (the gateway decides access) — never gate logic on them without a fallback you can test.
-- **Schemas** (`params`, `query`, `body`) are Zod; a failure answers **400 `VALIDATION`** before the handler runs. `responses` is for the typed client only, not enforced.
+- **Schemas** (`params`, `query`, `body`) are Zod; a failure answers **400 `VALIDATION`** before the handler runs. `responses` is for the typed client only, not enforced. `Data.get(collection, filter?, page?, limit?)` takes the filter itself as the second argument (`{ status: 'open' }`), not `{ filter: … }`. On lua-cli **3.49.0 and earlier** a field with `.default()` is typed `T | undefined` in the handler and a `.transform()` schema is refused by `tsc`; write `query.status ?? 'open'` there. The release after 3.49.0 types the schema output.
 - **Returns**: any JSON value → 200; `undefined` → 204; a `Response` as-is (`json(data, status, headers)` builds one). Response headers other than `content-type`, `cache-control`, `etag`, `location`, `content-disposition`, `content-language`, `x-lua-*` are dropped; **`set-cookie` is refused** — there are no cookie sessions, the client holds the session.
 - **Platform errors** all carry `{ code, message, issues?, executionId? }` with `code` one of `VALIDATION NOT_FOUND METHOD_NOT_ALLOWED HANDLER_ERROR FORBIDDEN UNAUTHENTICATED APP_DISABLED CONCURRENCY_LIMIT WALL_TIMEOUT RESPONSE_TOO_LARGE PLATFORM_ERROR`. A handler's own error body passes through untouched — return `json({ code: 'NOT_FOUND', message }, 404)` rather than throwing (a throw surfaces as `HANDLER_ERROR`).
 - `fetch: (request) => Response` is an escape hatch (Hono, itty-router) for paths no route matches; such paths lose schema validation and the typed client. Prefer `routes`.
@@ -93,14 +93,15 @@ lua test --ci webapp --name <app> --route '<METHOD> /path?query' [--input '{"bod
 
 Compiles, then starts the app's own Vite with hot reload; routes are served at `/_lua/api/*` from the **local sandbox as the developer**, against **live** `Data` and `env()`, and recompile on save. It is a long-running server (Ctrl+C to stop) and every click in the page hits live data, so the plugin **does not start it**: it prints `lua apps dev <name>` for the user to run in their own terminal and open the printed URL. `--port <n>` picks the port. `No web app named "<n>" in the compiled agent` = not listed in `webApps`.
 
-## 7. Shipping — staged, then live with an agent version
+## 7. Shipping — staged, then live on its own (3.49.0+) or with an agent version
 
 | Step | Command | Notes |
 |---|---|---|
-| Stage | `lua push webapp --ci --name <app> --force` | builds pages with `web/`'s Vite, uploads pages + route bundle, creates a web-app version. Ends `Staged but NOT live yet`. `--auto-deploy` does nothing for it. Bare `lua push` / `lua push all` include web apps |
-| Live | `lua version create --ci -m "<notes>"` → `LUA_DEPLOY_CONFIRMED=1 lua version promote <N>` | `/lua-deploy` → `agent-version`. The snapshot pins the **latest pushed** version of every web app |
-| Roll back | promote an earlier agent version | the app rolls back with it |
-| Switch off | admin console → agent → Apps | an admin toggle; a disabled app answers `APP_DISABLED` |
+| Stage | `lua push webapp --ci --name <app> --force` | builds pages with `web/`'s Vite, uploads pages + route bundle, creates a web-app version. Bare `lua push` / `lua push all` include web apps. The plugin never adds `--auto-deploy` |
+| ⏳ Live, 3.49.0+ | `LUA_DEPLOY_CONFIRMED=1 lua deploy webapp --ci --name <app> --set-version <v> --force` | `/lua-deploy` → `webapp`. A **scoped promote**: a new agent version identical to the live one except this app's pin, promoted at once (`✔ deployed <app>@<v> — agent version <n> promoted`; on an agent without versions `✅ Web app "<app>" v<v> deployed successfully`). Nothing else staged goes live. A failed deploy changes nothing (503 `SCOPED_PROMOTE_FAILED` / 409 `SCOPED_PROMOTE_CAP_EXHAUSTED`; re-run) |
+| Live, below 3.49.0 | `lua version create --ci -m "<notes>"` → `LUA_DEPLOY_CONFIRMED=1 lua version promote <N>` | no `webapp` deploy type there. The snapshot pins the **latest pushed** version of **every** primitive, so `/lua-deploy webapp` diffs it first (pilot step 5) |
+| Roll back | 3.49.0+: `LUA_DEPLOY_CONFIRMED=1 lua deploy webapp --ci --name <app> --set-version <previous> --force`; any version: promote an earlier agent version | the scoped form rolls back only that app |
+| Switch off | admin console → agent → Apps | an admin toggle; a disabled app answers `APP_DISABLED`. A deploy **never** switches it on: 3.49.0+ prints `⚠️  Web app <app> is switched off: the new version is live, but nobody can open it until it is switched on again.` — pass that on |
 
 Refused before upload (`WebAppBuildError`): no `index.html` in `pages.root`; built `index.html` over **256 Ki characters**; more than **1000** assets; an asset over **8 MiB**; an asset path outside `assets/[A-Za-z0-9._-/]` or over 512 chars (rename the source file); more than **200** routes.
 
@@ -121,6 +122,6 @@ Wall clock 30 s by default (60 s cap) → `WALL_TIMEOUT` · request body **1 MB*
 | 400 `VALIDATION` in `lua test webapp` | `--input` not wrapped in `{"body": …}`, or the body really fails the schema (`issues` says which) | wrap it; fix the data |
 | Page shows nothing / CSP errors in the browser console | a CDN script, remote stylesheet or font, or `fetch` to another origin | bundle via npm; call the third party from a route; or add the origin to `pages.csp` |
 | Page loops back to sign-in / `lua:auth:expired` | `lua.start()` never called, or the page stored and reused an old token | `void lua.start()` once in `main.tsx`; never persist tokens |
-| `Staged but NOT live yet` and the app still shows the old version | a web-app push never goes live alone | `/lua-deploy` → `agent-version` |
+| `Staged but NOT live yet` and the app still shows the old version | a push only stages | `/lua-deploy` → `webapp` (3.49.0+: scoped deploy; below: an agent version) |
 | `APP_DISABLED` | an admin switched the app off | admin console → agent → Apps |
 | `Set-Cookie` ignored, session lost between requests | cookies are dropped both ways | keep state in `Data`, identity in `auth` |
