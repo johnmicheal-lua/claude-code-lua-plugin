@@ -1,4 +1,4 @@
-# Web apps — pages and typed routes on an agent (lua-cli 3.42.0+ · read at 3.45.0; §7 deploy at 3.49.0)
+# Web apps — pages and typed routes on an agent (lua-cli 3.42.0+ · read at 3.45.0; §7 deploy at 3.49.0; §7a preview at 3.51.0)
 
 Read from lua-cli `src/types/web-app.ts`, `src/commands/apps.ts`, `src/commands/test.ts` (`testWebApp`), `src/commands/push.ts`, `src/primitives/web-app.handler.ts`, `src/utils/web-app-build.ts`, `src/utils/web-app-route.ts` and `template-web-app/` at **3.45.0** (npm `latest` is 3.46.0 on 2026-10-06 — not re-read); the wire contract and limits from `@lua/shared-types` `web-route-contract.ts`; the page policy from lua-core `src/apps-gateway/web-app-html.ts`; the snapshot rule from lua-agents `agent-version.service.ts`. Product docs: docs.heylua.ai `/concepts/apps`, `/build/apps/quickstart`, `/build/apps/routes-and-pages`, `/reference/cli/apps`. Below lua-cli **3.42.0** `webapp` is not a push/test type and `lua apps` does not exist — `/lua-update` first.
 
@@ -104,6 +104,23 @@ Compiles, then starts the app's own Vite with hot reload; routes are served at `
 | Roll back | 3.49.0+: `LUA_DEPLOY_CONFIRMED=1 lua deploy webapp --ci --name <app> --set-version <previous> --force`; any version: promote an earlier agent version | the scoped form rolls back only that app |
 | Switch off | admin console → agent → Apps | an admin toggle; a disabled app answers `APP_DISABLED`. A deploy **never** switches it on: 3.49.0+ prints `⚠️  Web app <app> is switched off: the new version is live, but nobody can open it until it is switched on again.` — pass that on |
 
+### 7a. Preview a staged version before it is live — `lua apps preview` (⏳ lua-cli 3.51.0+)
+
+Read from lua-cli `src/commands/apps-preview.ts` and lua-core `src/apps-gateway/web-app-preview.service.ts` on `main` (ADR 0019); docs.heylua.ai `/reference/cli/apps#lua-apps-preview`.
+
+```
+lua apps preview --ci <name> [--version <v>|latest] [--ttl 24h|2d] [--json]   # open one (or get the open one for that version)
+lua apps preview --ci [<name>] --list | --close <id> | --effects <id>
+```
+
+- Prints a **Lua Workspace link** (`https://workspace.heylua.ai/apps/<agentId>/<name>?preview=<id>`) to that pushed version, framed on its **own origin** `<slug>--p-<id>.apps.heylua.ai` under a **Preview** banner. Any version can be previewed (default: the latest push); a disabled app or one with no live version too. A second open of the same version hands back the open preview.
+- **Isolated:** routes read the agent's `Data`, but every write, update and delete goes to a **copy** (copy-on-write) deleted when the preview ends. Emails and messages are **recorded, not sent** (`--effects <id>` lists them, needs `logs:read`). ⚠ A `fetch` (any outside network call) **fails with `TEST_EGRESS_BLOCKED`** and is not recorded — a route that calls a third party errors in a preview. `env()` works. `Products`, `Baskets`, `Orders`, `Templates`, `CDN` and `Jobs` answer `test_session_tier_unsupported`; `Workflows.viewer` answers `viewer_unavailable`.
+- **Who:** anyone with **edit** access to the agent can open the link (shareable with another builder; they share the one copy of the data). Readers of the agent cannot.
+- **Lifetime:** 24 h by default, `--ttl` up to 168 h; `--close <id>` ends it at once (copy and recorded effects deleted). Afterwards the link shows an ended notice and routes answer `PREVIEW_ENDED`.
+- Refused with `WEB_APP_PREVIEW_NEEDS_AGENT_VERSION` (exit 10) when the agent has no agent version yet: the preview runs on the live agent version — tell the user to run `lua version create` once.
+- Exit codes: 2 usage (two modes, malformed id, bad `--ttl`), 3 no such app / preview, 9 auth, 10 forbidden or refused, 11 platform unavailable.
+- **The plugin's use:** it is safe to run — nothing goes live and nothing is sent — so after `lua push webapp` the plugin may offer it and, when the user wants to click through, run it and hand over the link. It is in no permission list, so Claude Code asks once before it runs. Never present a preview as "deployed": only `/lua-deploy webapp` makes a version live.
+
 Refused before upload (`WebAppBuildError`): no `index.html` in `pages.root`; built `index.html` over **256 Ki characters**; more than **1000** assets; an asset over **8 MiB**; an asset path outside `assets/[A-Za-z0-9._-/]` or over 512 chars (rename the source file); more than **200** routes.
 
 **Opening it** (after the promote): `https://workspace.heylua.ai/apps/<agentId>/<name>` (full page in Lua Workspace) and `https://admin.heylua.ai/admin/agents/<agentId>/apps` (the admin list). `agentId` is `agent.agentId` in `lua.skill.yaml`. Anyone who can read the agent can open its apps. The browser builds only — the native desktop app does not show web apps yet.
@@ -117,6 +134,7 @@ Wall clock 30 s by default (60 s cap) → `WALL_TIMEOUT` · request body **1 MB*
 | Symptom | Cause | Fix |
 |---|---|---|
 | `No Vite installation found for …` | `npm install` never ran in `web/` | `npm --prefix src/apps/<name>/web install --ignore-scripts` |
+| A route works in `lua test webapp` but errors in a preview with `TEST_EGRESS_BLOCKED` / `test_session_tier_unsupported` / `viewer_unavailable` | previews block outside calls and refuse those runtime objects (§7a) | expected in a preview; test that path with `lua test webapp` (live) or after the deploy |
 | `lua compile` fails on JSX / React types | `src/apps/*/web` missing from `tsconfig.json` `exclude` (tsconfig had comments, `apps new` skipped it) | add `"src/apps/*/web"` to `exclude` |
 | `❌ No web apps found` / `No web app named …` | app not in `webApps` on the `LuaAgent` | import it in `src/index.ts`, add to `webApps` |
 | `defineWebApp(<n>): route key … must look like 'GET /path'` | key typo (`'get /x'`, two spaces, no leading `/`) | `'<METHOD> /<path>'` |

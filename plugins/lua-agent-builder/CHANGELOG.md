@@ -2,6 +2,18 @@
 
 All notable changes to the `lua-agent-builder` plugin. Versions follow the tag `release-prod.yml` cuts from `package.json` (`v<version>`). lua-cli is a TypeScript SDK/CLI; it is unrelated to the Lua programming language.
 
+## 1.13.0 — 2026-10-12
+
+**Preview a web app version before it is live** (lua-cli 3.51.0).
+
+### Changed
+
+- **`web-apps.md` §7a: `lua apps preview`.** Opening a staged version as a Lua Workspace link on its own origin (`<slug>--p-<id>`) under a Preview banner; what a preview isolates — Data writes go to a copy deleted at the end, emails and messages are recorded (`--effects`), `fetch` fails with `TEST_EGRESS_BLOCKED` and is not recorded, `env()` works, `Products`/`Baskets`/`Orders`/`Templates`/`CDN`/`Jobs` answer `test_session_tier_unsupported`, `Workflows.viewer` answers `viewer_unavailable`; who can open it (edit access), `--ttl` (24 h, max 168 h), `--list`/`--close`/`--effects`, `PREVIEW_ENDED`, `WEB_APP_PREVIEW_NEEDS_AGENT_VERSION`, exit codes. §9 gains the "works in `lua test webapp`, errors in a preview" row.
+- **`/lua-push webapp`** offers the preview after a push on lua-cli 3.51.0+ and runs it only if the user wants the link. **`/lua-deploy`** mentions it for a version the user is unsure about. A preview is never reported as deployed.
+- `scripts/lint-knowledge-commands.mjs`: `lua apps` gains `preview` (and the existing `delete`).
+
+`lua apps preview` sits in no permission list: Claude Code asks once before it runs (it opens a shareable link). `PINNED_MIN_LUA_CLI` is unchanged: the new section is marked lua-cli 3.51.0+.
+
 ## 1.12.0 — 2026-10-11
 
 **Org-shared Data and viewer decisions from web apps** (lua-cli 3.50.0).
