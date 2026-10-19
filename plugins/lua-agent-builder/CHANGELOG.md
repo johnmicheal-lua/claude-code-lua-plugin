@@ -2,6 +2,26 @@
 
 All notable changes to the `lua-agent-builder` plugin. Versions follow the tag `release-prod.yml` cuts from `package.json` (`v<version>`). lua-cli is a TypeScript SDK/CLI; it is unrelated to the Lua programming language.
 
+## 1.14.0 — 2026-10-19
+
+**Web-app pages on the new design: `@lua-ai-global/ui` 0.3, app-client 0.1 and the `ui` MCP server** (lua-cli 3.55.0; LUA-1481).
+
+### New
+
+- **The `ui` MCP server** in `.mcp.json`: `https://ui.lua.dev/mcp`, the public Storybook catalog of `@lua-ai-global/ui` (no auth; `list-all-documentation`, `get-documentation`, `get-documentation-for-story`). The key is `ui`, not `lua-ui`, so every composed `mcp__plugin_<plugin>_<server>__<tool>` name is at most 64 characters (`lua-ui` made the story tool 65). Claude Code does resolve longer composed names (the existing `…_lua-docs__query_docs_filesystem_lua_cli` is 69), so this is margin, not a fix. The plugin names are `mcp__plugin_lua-agent-builder_ui__list-all-documentation` (56), `…__get-documentation` (51) and `…__get-documentation-for-story` (61). The skill builder has the three tools in its `tools:` line (plugin and bare `mcp__ui__…` spellings, like `lua-docs`) and looks a component's props up there before writing it; when the tools are unavailable it reads the installed package's `exports` and `dist/**/*.d.ts` instead of guessing. The permission template allows the three tools one by one in both spellings, never the whole server.
+
+### Changed
+
+- **`web-apps.md` §4.** The template stack is ui `~0.3` (the enterprise restyle Lua Workspace uses: flat surfaces, 6px radius, denser controls, Inter) and app-client `~0.1`, with the new `page` (`PageColumn`, `PageTitle`, `PageSection`, `Panel`, `StatGrid`, `Stat`), `list-row` (`ListRow`) and `empty-state` (`EmptyState`) components. New "Look and theme" bullet: app-client 0.1+ applies the shell's light/dark, density and the person's accent to `<html>` on `lua.start()` and every `lua:init`, so on app-client 0.1+ pages keep only `void lua.start()` (no theme lines of their own); an app on app-client 0.0.x or the copied 3.42–3.45 client keeps its theme lines and is pointed at `lua apps upgrade`. Either way, semantic tokens only, never palette classes or hex. New `lua apps upgrade <name>` bullet: what it changes (ui/app-client ranges, the old theme lines, the copied client, the bundled pane), that 0.2 → 0.3 needs no code changes, `lua apps dev` to look the pages over, and that the gateway restyles ui < 0.3 apps until they are rebuilt. §2 notes newer templates import the package already. §9 gains the "page ignores the accent" and "ui export missing" rows.
+- **`agents/lua-skill-builder.md`** step 4 for web apps: theme code gated on the app-client version in `web/package.json` (none on 0.1+; keep the template's lines on 0.0.x / the copied client), semantic tokens only, the `ui` MCP server before any component (installed `.d.ts` files as the fallback), the new page components, and `lua apps upgrade` named for the user (never run by the builder: it edits files and installs packages, outside the approved npm forms) when a component is newer than the installed ui.
+- **Lints**:
+  - `lint-mcp-config` pins remote servers to exact hosts (`docs.heylua.ai`, `ui.lua.dev`; https, no port) instead of any `*.heylua.ai`.
+  - `lint-mcp-refs` knows the `ui` tools, accepts kebab-case tool names, and checks tool names: each server-reported tool must match `^[A-Za-z0-9_-]{1,64}$`, and each composed `mcp__plugin_lua-agent-builder_<server>__<tool>` must use only `[A-Za-z0-9_-]` and stay within 128 characters. The composed limit is not 64, because live composed names of 65–69 characters already resolve.
+  - `lint-permissions` and `permissions-mirror.test.mjs` require the six per-tool `ui` rules and forbid a whole-server allow rule for any remote (http/sse) server in `.mcp.json`.
+  - `lint-knowledge-commands` learns `lua apps upgrade`.
+
+`PINNED_MIN_LUA_CLI` is unchanged: the new facts are marked lua-cli 3.55.0 (3.54.0 for `lua apps upgrade` itself).
+
 ## 1.13.0 — 2026-10-12
 
 **Preview a web app version before it is live** (lua-cli 3.51.0).
